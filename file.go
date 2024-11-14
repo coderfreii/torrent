@@ -59,6 +59,11 @@ func (f *File) BytesCompleted() (n int64) {
 	return
 }
 
+func (f *File) PieceStates() (r []FilePieceState) {
+
+	return
+}
+
 func (f *File) bytesCompletedLocked() int64 {
 	return f.length - f.bytesLeft()
 }
@@ -132,7 +137,8 @@ func (f *File) DisplayPath() string {
 
 // The download status of a piece that comprises part of a File.
 type FilePieceState struct {
-	Bytes int64 // Bytes within the piece that are part of this File.
+	DownloadedBytes int64
+	Bytes           int64 // Bytes within the piece that are part of this File.
 	PieceState
 }
 
@@ -143,6 +149,7 @@ func (f *File) State() (ret []FilePieceState) {
 	pieceSize := int64(f.t.usualPieceSize())
 	off := f.offset % pieceSize
 	remaining := f.length
+
 	for i := pieceIndex(f.offset / pieceSize); ; i++ {
 		if remaining == 0 {
 			break
@@ -152,7 +159,11 @@ func (f *File) State() (ret []FilePieceState) {
 			len1 = remaining
 		}
 		ps := f.t.pieceState(i)
-		ret = append(ret, FilePieceState{len1, ps})
+		DownloadedBytes := int64(f.t.piece(i).numDirtyBytes())
+		if ps.Complete == true {
+			DownloadedBytes = len1
+		}
+		ret = append(ret, FilePieceState{DownloadedBytes, len1, ps})
 		off = 0
 		remaining -= len1
 	}
